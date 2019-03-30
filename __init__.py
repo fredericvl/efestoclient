@@ -1,15 +1,19 @@
 """EfestoClient provides for Efesto heat devices (for example: pellet stoves)
 """
-from datetime import datetime, timedelta
+import warnings
 import logging
-
 import requests
+from datetime import datetime, timedelta
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 try:
     import http.client as http_client
 except ImportError:
     # Python 2
     import httplib as http_client
+
+"""Disable SSL verify warning because Efesto has self signed certificates"""
+warnings.simplefilter('ignore',InsecureRequestWarning)
 
 logging.basicConfig()
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +32,13 @@ HEADER = {
 
 class EfestoClient(object):
     """Provides access to Efesto."""
+
+    statusTranslated = {
+        1: "OFF", 2: "START", 3: "LOAD PELLETS", 4: "FLAME LIGHT", 5: "ON",
+        6: "CLEANING FIRE-POT", 7: "CLEANING FINAL", 8: "ECO-STOP", 9: "?",
+        10: "NO FIRE?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?", 16: "?",
+        17: "?", 18: "?", 19: "?", 20: "?"
+    }
 
     def __init__(self, url, username, password, deviceid, debug=False):
         """EfestoClient object constructor"""
@@ -112,7 +123,7 @@ class EfestoClient(object):
 
         return self.remember
 
-    def get_stove_status(self):
+    def get_status(self):
         """Get stove status"""
 
         url = (self.url + "/en/ajax/action/frontend/response/ajax/")
@@ -127,4 +138,186 @@ class EfestoClient(object):
                                  verify=False)
         response.raise_for_status()
 
-        return response.json()
+        res = response.json()
+
+        if res is None:
+            returnpayload = {
+                'status': 1,
+                'message': 'unkown-error'
+            }
+        elif (res["status"] > 0):
+            returnpayload = res
+        else:
+            returnpayload = {
+                'status': res["status"],
+                'deviceStatus': res["message"]["deviceStatus"],
+                'deviceStatusTranslated': \
+                    self.statusTranslated[res["message"]["deviceStatus"]],
+                'airTemperature': res["message"]["airTemperature"],
+                'smokeTemperature': res["message"]["smokeTemperature"],
+                'realPower': res["message"]["realPower"],
+                'lastSetAirTemperature': res["message"]["lastSetAirTemperature"],
+                'lastSetPower': res["message"]["lastSetPower"]
+            }
+
+            if res["idle"] is not None:
+                extrapayload = {
+                    'idle_info': res["idle"]["idle_label"]
+                }
+                returnpayload.update(extrapayload)
+
+        return returnpayload
+
+    def set_off(self):
+        """Turn stove off"""
+
+        url = (self.url + "/en/ajax/action/frontend/response/ajax/")
+
+        payload = {
+            'method': "heater-off",
+            'params': "1",
+            'device': self.deviceid
+        }
+
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False)
+        response.raise_for_status()
+
+        res = response.json()
+
+        if res is None:
+            returnpayload = {
+                'status': 1,
+                'message': 'unkown-error'
+            }
+        elif (res["status"] > 0):
+            returnpayload = {
+                'status': 1,
+                'message': 'failed'
+            }
+        else:
+            returnpayload = {
+                'status': 0,
+                'message': 'ok'
+            }
+
+        return returnpayload
+
+    def set_on(self):
+        """Turn stove off"""
+
+        url = (self.url + "/en/ajax/action/frontend/response/ajax/")
+
+        payload = {
+            'method': "heater-on",
+            'params': "1",
+            'device': self.deviceid
+        }
+
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False)
+        response.raise_for_status()
+
+        res = response.json()
+
+        if res is None:
+            returnpayload = {
+                'status': 1,
+                'message': 'unkown-error'
+            }
+        elif (res["status"] > 0):
+            returnpayload = {
+                'status': 1,
+                'message': 'failed'
+            }
+        else:
+            returnpayload = {
+                'status': 0,
+                'message': 'ok'
+            }
+
+        return returnpayload
+
+    def set_temperature(self, temperatureValue):
+        """Set desired room temperature"""
+
+        url = (self.url + "/en/ajax/action/frontend/response/ajax/")
+
+        payload = {
+            'method': "write-parameters-queue",
+            'params': "set-air-temperature=" + str(temperatureValue),
+            'device': self.deviceid
+        }
+
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False)
+        response.raise_for_status()
+
+        res = response.json()
+
+        if res is None:
+            returnpayload = {
+                'status': 1,
+                'message': 'unkown-error'
+            }
+        elif (res["status"] > 0):
+            returnpayload = {
+                'status': 1,
+                'message': 'failed'
+            }
+        else:
+            for key in res["message"]:
+                if (res["message"][key] > 0):
+                    returnpayload = {
+                        'status': 1,
+                        'message': 'failed'
+                    }
+                else:
+                    returnpayload = {
+                        'status': 0,
+                        'message': 'ok'
+                    }
+
+        return returnpayload
+
+    def set_power(self, powerValue):
+        """Set desired power value"""
+
+        url = (self.url + "/en/ajax/action/frontend/response/ajax/")
+
+        payload = {
+            'method': "write-parameters-queue",
+            'params': "set-power=" + str(powerValue),
+            'device': self.deviceid
+        }
+
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False)
+        response.raise_for_status()
+
+        res = response.json()
+
+        if res is None:
+            returnpayload = {
+                'status': 1,
+                'message': 'unkown-error'
+            }
+        elif (res["status"] > 0):
+            returnpayload = {
+                'status': 1,
+                'message': 'failed'
+            }
+        else:
+            for key in res["message"]:
+                if (res["message"][key] > 0):
+                    returnpayload = {
+                        'status': 1,
+                        'message': 'failed'
+                    }
+                else:
+                    returnpayload = {
+                        'status': 0,
+                        'message': 'ok'
+                    }
+
+        return returnpayload
