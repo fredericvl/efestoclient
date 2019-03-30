@@ -1,4 +1,4 @@
-"""EfestoClient provides for Efesto heat devices (for example: pellet stoves)
+"""EfestoClient provides controlling Efesto heat devices
 """
 import warnings
 import logging
@@ -11,6 +11,8 @@ try:
 except ImportError:
     # Python 2
     import httplib as http_client
+
+name = "efestoclient"
 
 """Disable SSL verify warning because Efesto has self signed certificates"""
 warnings.simplefilter('ignore',InsecureRequestWarning)
