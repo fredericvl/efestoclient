@@ -36,10 +36,10 @@ class EfestoClient(object):
     """Provides access to Efesto."""
 
     statusTranslated = {
-        1: "OFF", 2: "START", 3: "LOAD PELLETS", 4: "FLAME LIGHT", 5: "ON",
-        6: "CLEANING FIRE-POT", 7: "CLEANING FINAL", 8: "ECO-STOP", 9: "?",
-        10: "NO FIRE?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?", 16: "?",
-        17: "?", 18: "?", 19: "?", 20: "?"
+        0: "OFF", 1: "START", 2: "LOAD PELLETS", 3: "FLAME LIGHT", 4: "ON",
+        5: "CLEANING FIRE-POT", 6: "CLEANING FINAL", 7: "ECO-STOP", 8: "?",
+        9: "NO FIRE?", 10: "?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?",
+        16: "?", 17: "?", 18: "?", 19: "?"
     }
 
     def __init__(self, url, username, password, deviceid, debug=False):
