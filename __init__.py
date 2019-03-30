@@ -69,7 +69,7 @@ class EfestoClient(object):
             if not self.remember:
                 cookies = "PHPSESSID=" + self.phpsessid
             else:
-                cookies = "PHPSESSID=" + self.phpsessid + "; remember="
+                cookies = "PHPSESSID=" + self.phpsessid + "; remember=" \
                           + self.remember
 
         return {'Accept': HEADER_ACCEPT,
