@@ -121,7 +121,7 @@ class EfestoClient(object):
         self.remember = response.cookies.get("remember")
 
         if self.remember is None:
-            raise Exception('Failed to login, please double check credentials')
+            raise Exception('Failed to login, please check credentials')
 
         return self.remember
 
@@ -158,7 +158,8 @@ class EfestoClient(object):
                 'airTemperature': res["message"]["airTemperature"],
                 'smokeTemperature': res["message"]["smokeTemperature"],
                 'realPower': res["message"]["realPower"],
-                'lastSetAirTemperature': res["message"]["lastSetAirTemperature"],
+                'lastSetAirTemperature': \
+                    res["message"]["lastSetAirTemperature"],
                 'lastSetPower': res["message"]["lastSetPower"]
             }
 
