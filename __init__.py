@@ -26,10 +26,10 @@ HEADER = {
     'Content-Type': HEADER_CONTENT_TYPE
 }
 
-class EfestoClient(object):                                                     # pylint: disable=too-many-instance-attributes,useless-object-inheritance
+class EfestoClient(object):
     """Provides access to Efesto."""
 
-    def __init__(self, url, username, password, deviceid, debug=False):         # pylint: disable=too-many-arguments
+    def __init__(self, url, username, password, deviceid, debug=False):
         """EfestoClient object constructor"""
         if debug is True:
             _LOGGER.setLevel(logging.DEBUG)
@@ -69,13 +69,15 @@ class EfestoClient(object):                                                     
             if not self.remember:
                 cookies = "PHPSESSID=" + self.phpsessid
             else:
-                cookies = "PHPSESSID=" + self.phpsessid + "; remember=" + self.remember
+                cookies = "PHPSESSID=" + self.phpsessid + "; remember="
+                          + self.remember
 
         return {'Accept': HEADER_ACCEPT,
                 'Cookie': cookies,
                 'Content-Type': HEADER_CONTENT_TYPE,
                 'Origin': self.url,
-                'Referer': self.url + '/en/heaters/action/manage/heater/' + self.deviceid + '/'}
+                'Referer': self.url + '/en/heaters/action/manage/heater/'
+                                    + self.deviceid + '/'}
 
     def sessionid(self):
         """Get PHP session information"""
@@ -99,7 +101,7 @@ class EfestoClient(object):                                                     
             'login[password]': self.password
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(), 
+        response = requests.post(url, data=payload, headers=self._headers(),
                                  verify=False, allow_redirects=False)
         response.raise_for_status()
 
@@ -114,14 +116,15 @@ class EfestoClient(object):                                                     
         """Get stove status"""
 
         url = (self.url + "/en/ajax/action/frontend/response/ajax/")
-        
+
         payload = {
             'method': "get-state",
             'params': "1",
             'device': self.deviceid
         }
-        
-        response = requests.post(url, data=payload, headers=self._headers(), verify=False)
+
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False)
         response.raise_for_status()
 
         return response.json()
