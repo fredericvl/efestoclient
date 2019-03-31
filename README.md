@@ -20,6 +20,16 @@ All methods return JSON output and there is always a 'status' field present.
 - If status = 0 => OK
 - If status > 0 => FAILED
 
+**Get system modes**
+
+`heater.get_system_modes()`
+
+example output:
+
+`['OFF', 'START', 'LOAD PELLETS', 'FLAME LIGHT', 'ON', 'CLEANING FIRE-POT', 'CLEANING FINAL', 'ECO-STOP', '?', 'NO FIRE?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?']`
+
+----------
+
 **Get heater status**
 
 `heater.get_status()`
