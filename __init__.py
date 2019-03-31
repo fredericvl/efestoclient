@@ -125,6 +125,13 @@ class EfestoClient(object):
 
         return self.remember
 
+    def get_system_modes(self):
+        """Get list of system modes"""
+        statusList = []
+        for key in self.statusTranslated:
+            statusList.append(self.statusTranslated[key])
+        return statusList
+
     def get_status(self):
         """Get stove status"""
 
