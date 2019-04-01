@@ -132,51 +132,66 @@ class EfestoClient(object):
             statusList.append(self.statusTranslated[key])
         return statusList
 
+    def handle_webcall(self, url, payload):
+        response = requests.post(url, data=payload, headers=self._headers(),
+                                 verify=False, allow_redirects=False)
+        response.raise_for_status()
+
+        if response.status_code == 200:
+            res = response.json()
+            if res is None:
+                returnpayload = {
+                    'status': 1,
+                    'message': 'Unkown error at Efesto end'
+                }
+            else:
+                returnpayload = res
+        elif response.status_code == 302:
+            returnpayload = {
+                'status': 1,
+                'message': 'Efesto server is temporary unavailable ' +
+                           '(got temporary redirect)'
+            }
+        else:
+            returnpayload = {
+                'status': 1,
+                'message': 'Efesto server is unavailable'
+            }
+        return returnpayload
+
     def get_status(self):
         """Get stove status"""
 
         url = (self.url + "/en/ajax/action/frontend/response/ajax/")
 
         payload = {
-            'method': "get-state",
-            'params': "1",
+            'method': 'get-state',
+            'params': '1',
             'device': self.deviceid
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False)
-        response.raise_for_status()
-
-        res = response.json()
-
-        if res is None:
+        res = self.handle_webcall(url, payload)
+        if res['status'] == 0:
             returnpayload = {
-                'status': 1,
-                'message': 'unkown-error'
+                'status': res['status'],
+                'deviceStatus': res['message']['deviceStatus'],
+                'deviceStatusTranslated':
+                    self.statusTranslated[res['message']['deviceStatus']],
+                'airTemperature': res['message']['airTemperature'],
+                'smokeTemperature': res['message']['smokeTemperature'],
+                'realPower': res['message']['realPower'],
+                'lastSetAirTemperature':
+                    res['message']['lastSetAirTemperature'],
+                'lastSetPower': res['message']['lastSetPower']
             }
-        elif (res["status"] > 0):
-            returnpayload = res
-        else:
-            returnpayload = {
-                'status': res["status"],
-                'deviceStatus': res["message"]["deviceStatus"],
-                'deviceStatusTranslated': \
-                    self.statusTranslated[res["message"]["deviceStatus"]],
-                'airTemperature': res["message"]["airTemperature"],
-                'smokeTemperature': res["message"]["smokeTemperature"],
-                'realPower': res["message"]["realPower"],
-                'lastSetAirTemperature': \
-                    res["message"]["lastSetAirTemperature"],
-                'lastSetPower': res["message"]["lastSetPower"]
-            }
-
-            if res["idle"] is not None:
+            if res['idle'] is not None:
                 extrapayload = {
-                    'idle_info': res["idle"]["idle_label"]
+                    'idle_info': res['idle']['idle_label']
                 }
                 returnpayload.update(extrapayload)
-
-        return returnpayload
+            return returnpayload
+        else:
+            return res
 
     def set_off(self):
         """Turn stove off"""
@@ -184,34 +199,26 @@ class EfestoClient(object):
         url = (self.url + "/en/ajax/action/frontend/response/ajax/")
 
         payload = {
-            'method': "heater-off",
-            'params': "1",
+            'method': 'heater-off',
+            'params': '1',
             'device': self.deviceid
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False)
-        response.raise_for_status()
-
-        res = response.json()
-
-        if res is None:
-            returnpayload = {
-                'status': 1,
-                'message': 'unkown-error'
-            }
-        elif (res["status"] > 0):
-            returnpayload = {
-                'status': 1,
-                'message': 'failed'
-            }
+        res = self.handle_webcall(url, payload)
+        if res['status'] == 0:
+            if (res["status"] > 0):
+                returnpayload = {
+                    'status': 1,
+                    'message': 'failed'
+                }
+            else:
+                returnpayload = {
+                    'status': 0,
+                    'message': 'ok'
+                }
+            return returnpayload
         else:
-            returnpayload = {
-                'status': 0,
-                'message': 'ok'
-            }
-
-        return returnpayload
+            return res
 
     def set_on(self):
         """Turn stove off"""
@@ -228,25 +235,21 @@ class EfestoClient(object):
                                  verify=False)
         response.raise_for_status()
 
-        res = response.json()
-
-        if res is None:
-            returnpayload = {
-                'status': 1,
-                'message': 'unkown-error'
-            }
-        elif (res["status"] > 0):
-            returnpayload = {
-                'status': 1,
-                'message': 'failed'
-            }
+        res = self.handle_webcall(url, payload)
+        if res['status'] == 0:
+            if (res["status"] > 0):
+                returnpayload = {
+                    'status': 1,
+                    'message': 'failed'
+                }
+            else:
+                returnpayload = {
+                    'status': 0,
+                    'message': 'ok'
+                }
+            return returnpayload
         else:
-            returnpayload = {
-                'status': 0,
-                'message': 'ok'
-            }
-
-        return returnpayload
+            return res
 
     def set_temperature(self, temperatureValue):
         """Set desired room temperature"""
@@ -263,32 +266,28 @@ class EfestoClient(object):
                                  verify=False)
         response.raise_for_status()
 
-        res = response.json()
-
-        if res is None:
-            returnpayload = {
-                'status': 1,
-                'message': 'unkown-error'
-            }
-        elif (res["status"] > 0):
-            returnpayload = {
-                'status': 1,
-                'message': 'failed'
-            }
+        res = self.handle_webcall(url, payload)
+        if res['status'] == 0:
+            if (res["status"] > 0):
+                returnpayload = {
+                    'status': 1,
+                    'message': 'failed'
+                }
+            else:
+                for key in res["message"]:
+                    if (res["message"][key] > 0):
+                        returnpayload = {
+                            'status': 1,
+                            'message': 'failed'
+                        }
+                    else:
+                        returnpayload = {
+                            'status': 0,
+                            'message': 'ok'
+                        }
+            return returnpayload
         else:
-            for key in res["message"]:
-                if (res["message"][key] > 0):
-                    returnpayload = {
-                        'status': 1,
-                        'message': 'failed'
-                    }
-                else:
-                    returnpayload = {
-                        'status': 0,
-                        'message': 'ok'
-                    }
-
-        return returnpayload
+            return res
 
     def set_power(self, powerValue):
         """Set desired power value"""
@@ -305,29 +304,25 @@ class EfestoClient(object):
                                  verify=False)
         response.raise_for_status()
 
-        res = response.json()
-
-        if res is None:
-            returnpayload = {
-                'status': 1,
-                'message': 'unkown-error'
-            }
-        elif (res["status"] > 0):
-            returnpayload = {
-                'status': 1,
-                'message': 'failed'
-            }
+        res = self.handle_webcall(url, payload)
+        if res['status'] == 0:
+            if (res["status"] > 0):
+                returnpayload = {
+                    'status': 1,
+                    'message': 'failed'
+                }
+            else:
+                for key in res["message"]:
+                    if (res["message"][key] > 0):
+                        returnpayload = {
+                            'status': 1,
+                            'message': 'failed'
+                        }
+                    else:
+                        returnpayload = {
+                            'status': 0,
+                            'message': 'ok'
+                        }
+            return returnpayload
         else:
-            for key in res["message"]:
-                if (res["message"][key] > 0):
-                    returnpayload = {
-                        'status': 1,
-                        'message': 'failed'
-                    }
-                else:
-                    returnpayload = {
-                        'status': 0,
-                        'message': 'ok'
-                    }
-
-        return returnpayload
+            return res
