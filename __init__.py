@@ -32,13 +32,14 @@ HEADER = {
     'Content-Type': HEADER_CONTENT_TYPE
 }
 
+
 class EfestoClient(object):
     """Provides access to Efesto."""
 
     statusTranslated = {
         0: "OFF", 1: "START", 2: "LOAD PELLETS", 3: "FLAME LIGHT", 4: "ON",
         5: "CLEANING FIRE-POT", 6: "CLEANING FINAL", 7: "ECO-STOP", 8: "?",
-        9: "NO FIRE?", 10: "?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?",
+        9: "NO PELLETS", 10: "?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?",
         16: "?", 17: "?", 18: "?", 19: "?"
     }
 
