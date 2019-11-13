@@ -122,7 +122,7 @@ class EfestoClient(object):
         self.remember = response.cookies.get("remember")
 
         if self.remember is None:
-            raise Exception('Failed to login, please check credentials')
+            raise Error('Failed to login, please check credentials')
 
         return self.remember
 
@@ -327,3 +327,8 @@ class EfestoClient(object):
             return returnpayload
         else:
             return res
+
+class Error(Exception):
+    """Exception type for Efesto"""
+    def __init__(self, message):
+        Exception.__init__(self, message)
