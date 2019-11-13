@@ -1,2 +1,8 @@
-__init__.pyc
+.DS_Store
+efestoclient.egg-info
+build
+dist
+.vscode
+efestoclient/__pycache__
+efestoclient/.vscode
 test.py
