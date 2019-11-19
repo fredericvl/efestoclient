@@ -3,6 +3,7 @@
 import warnings
 import logging
 import requests
+import socket
 from datetime import datetime, timedelta
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -15,7 +16,7 @@ except ImportError:
 name = "efestoclient"
 
 """Disable SSL verify warning because Efesto has self signed certificates"""
-warnings.simplefilter('ignore',InsecureRequestWarning)
+warnings.simplefilter('ignore', InsecureRequestWarning)
 
 logging.basicConfig()
 _LOGGER = logging.getLogger(__name__)
@@ -98,8 +99,11 @@ class EfestoClient(object):
 
         url = self.url + '/en/login/'
 
-        response = requests.get(url, headers=self._headers(), verify=False)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, headers=self._headers(), verify=False)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(str.format("Connection to {0} not possible", url))
 
         self.phpsessid = response.cookies.get("PHPSESSID")
 
@@ -115,14 +119,17 @@ class EfestoClient(object):
             'login[password]': self.password
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False, allow_redirects=False)
-        response.raise_for_status()
+        try:
+            response = requests.post(url, data=payload, headers=self._headers(),
+                                    verify=False, allow_redirects=False)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(str.format("Connection to {0} not possible", url))
 
         self.remember = response.cookies.get("remember")
 
         if self.remember is None:
-            raise Error('Failed to login, please check credentials')
+            raise UnauthorizedError('Failed to login, please check credentials')
 
         return self.remember
 
@@ -134,9 +141,12 @@ class EfestoClient(object):
         return statusList
 
     def handle_webcall(self, url, payload):
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False, allow_redirects=False)
-        response.raise_for_status()
+        try:
+            response = requests.post(url, data=payload, headers=self._headers(),
+                                    verify=False, allow_redirects=False)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(str.format("Connection to {0} not possible", url))
 
         if response.status_code == 200:
             res = response.json()
@@ -172,27 +182,20 @@ class EfestoClient(object):
         }
 
         res = self.handle_webcall(url, payload)
-        if res['status'] == 0:
-            returnpayload = {
-                'status': res['status'],
-                'deviceStatus': res['message']['deviceStatus'],
-                'deviceStatusTranslated':
-                    self.statusTranslated[res['message']['deviceStatus']],
-                'airTemperature': res['message']['airTemperature'],
-                'smokeTemperature': res['message']['smokeTemperature'],
-                'realPower': res['message']['realPower'],
-                'lastSetAirTemperature':
-                    res['message']['lastSetAirTemperature'],
-                'lastSetPower': res['message']['lastSetPower']
-            }
-            if res['idle'] is not None:
-                extrapayload = {
-                    'idle_info': res['idle']['idle_label']
-                }
-                returnpayload.update(extrapayload)
-            return returnpayload
-        else:
-            return res
+        if res['status'] > 0:
+            raise Error(str.format("{0}", res['message']))
+
+        idle_info = res['idle']['idle_label'] if res['idle'] is not None else None
+
+        return Device(self.deviceid,
+                      res['message']['deviceStatus'],
+                      self.statusTranslated[res['message']['deviceStatus']],
+                      res['message']['airTemperature'],
+                      res['message']['smokeTemperature'],
+                      res['message']['realPower'],
+                      res['message']['lastSetAirTemperature'],
+                      res['message']['lastSetPower'],
+                      idle_info)
 
     def set_off(self):
         """Turn stove off"""
@@ -206,20 +209,10 @@ class EfestoClient(object):
         }
 
         res = self.handle_webcall(url, payload)
-        if res['status'] == 0:
-            if (res["status"] > 0):
-                returnpayload = {
-                    'status': 1,
-                    'message': 'failed'
-                }
-            else:
-                returnpayload = {
-                    'status': 0,
-                    'message': 'ok'
-                }
-            return returnpayload
-        else:
-            return res
+        if res['status'] > 0:
+            raise Error(str.format("{0}", res['message']))
+
+        return True
 
     def set_on(self):
         """Turn stove off"""
@@ -232,25 +225,11 @@ class EfestoClient(object):
             'device': self.deviceid
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False)
-        response.raise_for_status()
-
         res = self.handle_webcall(url, payload)
-        if res['status'] == 0:
-            if (res["status"] > 0):
-                returnpayload = {
-                    'status': 1,
-                    'message': 'failed'
-                }
-            else:
-                returnpayload = {
-                    'status': 0,
-                    'message': 'ok'
-                }
-            return returnpayload
-        else:
-            return res
+        if res['status'] > 0:
+            raise Error(str.format("{0}", res['message']))
+
+        return True
 
     def set_temperature(self, temperatureValue):
         """Set desired room temperature"""
@@ -263,32 +242,13 @@ class EfestoClient(object):
             'device': self.deviceid
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False)
-        response.raise_for_status()
-
         res = self.handle_webcall(url, payload)
-        if res['status'] == 0:
-            if (res["status"] > 0):
-                returnpayload = {
-                    'status': 1,
-                    'message': 'failed'
-                }
-            else:
-                for key in res["message"]:
-                    if (res["message"][key] > 0):
-                        returnpayload = {
-                            'status': 1,
-                            'message': 'failed'
-                        }
-                    else:
-                        returnpayload = {
-                            'status': 0,
-                            'message': 'ok'
-                        }
-            return returnpayload
-        else:
-            return res
+        if res['status'] > 0:
+            raise Error(str.format("{0}", res['message']))
+
+        for key in res["message"]:
+            if (res["message"][key] > 0):
+                raise Error(str.format("{0}-failed", key))
 
     def set_power(self, powerValue):
         """Set desired power value"""
@@ -301,34 +261,80 @@ class EfestoClient(object):
             'device': self.deviceid
         }
 
-        response = requests.post(url, data=payload, headers=self._headers(),
-                                 verify=False)
-        response.raise_for_status()
-
         res = self.handle_webcall(url, payload)
-        if res['status'] == 0:
-            if (res["status"] > 0):
-                returnpayload = {
-                    'status': 1,
-                    'message': 'failed'
-                }
-            else:
-                for key in res["message"]:
-                    if (res["message"][key] > 0):
-                        returnpayload = {
-                            'status': 1,
-                            'message': 'failed'
-                        }
-                    else:
-                        returnpayload = {
-                            'status': 0,
-                            'message': 'ok'
-                        }
-            return returnpayload
-        else:
-            return res
+        if res['status'] > 0:
+            raise Error(str.format("{0}", res['message']))
+
+        for key in res["message"]:
+            if (res["message"][key] > 0):
+                raise Error(str.format("{0}-failed", key))
+
+
+class Device(object):
+    """Efesto heating device representation"""
+    def __init__(self, device_id, device_status, device_status_human,
+                 air_temperature, smoke_temperature, real_power,
+                 last_set_air_temperature, last_set_power, idle_info=None):
+        self.__device_id = device_id
+        self.__device_status = device_status
+        self.__device_status_human = device_status_human
+        self.__air_temperature = air_temperature
+        self.__smoke_temperature = smoke_temperature
+        self.__real_power = real_power
+        self.__last_set_air_temperature = last_set_air_temperature
+        self.__last_set_power = last_set_power
+        self.__idle_info = idle_info
+
+    @property
+    def device_id(self):
+        return self.__device_id
+
+    @property
+    def device_status(self):
+        return self.__device_status
+
+    @property
+    def device_status_human(self):
+        return self.__device_status_human
+
+    @property
+    def air_temperature(self):
+        return self.__air_temperature
+
+    @property
+    def smoke_temperature(self):
+        return self.__smoke_temperature
+
+    @property
+    def real_power(self):
+        return self.__real_power
+
+    @property
+    def last_set_air_temperature(self):
+        return self.__last_set_air_temperature
+
+    @property
+    def last_set_power(self):
+        return self.__last_set_power
+
+    @property
+    def idle_info(self):
+        return self.__idle_info
+
 
 class Error(Exception):
     """Exception type for Efesto"""
     def __init__(self, message):
         Exception.__init__(self, message)
+
+
+class UnauthorizedError(Error):
+    """Unauthorized"""
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class ConnectionError(Error):
+    """Unauthorized"""
+    def __init__(self, message):
+        super().__init__(message)
