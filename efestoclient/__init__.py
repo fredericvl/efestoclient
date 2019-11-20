@@ -102,8 +102,10 @@ class EfestoClient(object):
         try:
             response = requests.get(url, headers=self._headers(), verify=False)
             response.raise_for_status()
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             raise ConnectionError(str.format("Connection to {0} not possible", url))
+        except requests.exceptions.RequestException:
+            raise InvalidURLError(str.format("Invalid Efesto url: {0}", url))
 
         self.phpsessid = response.cookies.get("PHPSESSID")
 
@@ -123,8 +125,10 @@ class EfestoClient(object):
             response = requests.post(url, data=payload, headers=self._headers(),
                                     verify=False, allow_redirects=False)
             response.raise_for_status()
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             raise ConnectionError(str.format("Connection to {0} not possible", url))
+        except requests.exceptions.RequestException:
+            raise InvalidURLError(str.format("Invalid Efesto url: {0}", url))
 
         self.remember = response.cookies.get("remember")
 
@@ -145,8 +149,10 @@ class EfestoClient(object):
             response = requests.post(url, data=payload, headers=self._headers(),
                                     verify=False, allow_redirects=False)
             response.raise_for_status()
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             raise ConnectionError(str.format("Connection to {0} not possible", url))
+        except requests.exceptions.RequestException:
+            raise InvalidURLError(str.format("Invalid Efesto url: {0}", url))
 
         if response.status_code == 200:
             res = response.json()
@@ -338,3 +344,9 @@ class ConnectionError(Error):
     """Unauthorized"""
     def __init__(self, message):
         super().__init__(message)
+
+class InvalidURLError(Error):
+    """Invalid URL"""
+    def __init__(self, message):
+        super().__init__(message)
+

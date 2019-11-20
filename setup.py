@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="efestoclient",
-    version="0.0.9",
+    version="0.0.10",
     author="Frederic Van Linthoudt",
     author_email="frederic.van.linthoudt@gmail.com",
     description="EfestoClient provides controlling Efesto heat devices",
