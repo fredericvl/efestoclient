@@ -37,14 +37,149 @@ HEADER = {
 class EfestoClient(object):
     """Provides access to Efesto."""
 
-    statusTranslated = {
-        0: "OFF", 1: "START", 2: "LOAD PELLETS", 3: "FLAME LIGHT", 4: "ON",
-        5: "CLEANING FIRE-POT", 6: "CLEANING FINAL", 7: "ECO-STOP", 8: "?",
-        9: "NO PELLETS", 10: "?", 11: "?", 12: "?", 13: "?", 14: "?", 15: "?",
-        16: "?", 17: "?", 18: "?", 19: "?"
+    # Available languages en, de, fr, it, es
+    statusTranslated = {}
+
+    statusTranslated['de'] = {
+        0: "AUSGESCHALTET",
+        1: "PELLET LAST",
+        2: "WARTET FLAMME",
+        3: "ZUNDUNG",
+        4: "ARBEITEN",
+        5: "ASCHKASTEN REINIGUNG",
+        6: "ENDREINIGUNG",
+        7: "BEREITHALTEN",
+        8: "ALARM",
+        9: "ALARMSPEICHER"
+    }
+    statusTranslated['en'] = {
+        0: "OFF",
+        1: "PELLET LOAD",
+        2: "AWAITING FLAME",
+        3: "LIGHTING",
+        4: "WORKING",
+        5: "ASHPAN CLEANING",
+        6: "FINAL CLEANING",
+        7: "STANDBY",
+        8: "ALARM",
+        9: "ALARM MEMORY"
+    }
+    statusTranslated['fr'] = {
+        0: "ETEINT",
+        1: "CHARGE GRANULE DE BOIS",
+        2: "FLAMME DANS L'ATTENTE",
+        3: "ALLUMAGE",
+        4: "TRAVAIL",
+        5: "NETTOYAGE BRASERO",
+        6: "NETTOYAGE FINAL",
+        7: "ETRE PRET",
+        8: "ALARME",
+        9: "MEMOIRE D'ALARME"
+    }
+    statusTranslated['it'] = {
+        0: "SPENTA",
+        1: "CARICO PELLET",
+        2: "ATTESA FIAMMA",
+        3: "ACCENSIONE",
+        4: "LAVORO",
+        5: "PULIZIA BRACIERE",
+        6: "PULIZIA FINALE",
+        7: "STAND-BY",
+        8: "ALLARME",
+        9: "MEMORIA ALLARME"
+    }
+    statusTranslated['es'] = {
+        0: "APAGADA",
+        1: "PELLETS DE CARGA",
+        2: "LLAMA A LA ESPERA",
+        3: "IGNICION",
+        4: "TRABAJANDO",
+        5: "LA LIMPIEZA DEL CENICERO",
+        6: "LIMPIEZA FINAL",
+        7: "EN ENSPERA",
+        8: "ALARMA",
+        9: "MEMORIA DE ALARMA"
     }
 
-    def __init__(self, url, username, password, deviceid, debug=False):
+    errorTranslated = {}
+
+    errorTranslated['de'] = {
+        0: "None",
+        1: "E8",
+        2: "E4",
+        4: "E9 - Fehlendes Pellet",
+        8: "E7",
+        16: "E3",
+        32: "E1",
+        48: "E6",
+        64: "E2",
+        72: "E14",
+        129: "E12",
+        132: "E19",
+        136: "E13"
+    }
+    errorTranslated['en'] = {
+        0: "None",
+        1: "E8",
+        2: "E4",
+        4: "E9 - Missing pellet",
+        8: "E7",
+        16: "E3",
+        32: "E1",
+        48: "E6",
+        64: "E2",
+        72: "E14",
+        129: "E12",
+        132: "E19",
+        136: "E13"
+    }
+    errorTranslated['fr'] = {
+        0: "None",
+        1: "E8",
+        2: "E4",
+        4: "E9 - Granule manquant",
+        8: "E7",
+        16: "E3",
+        32: "E1",
+        48: "E6",
+        64: "E2",
+        72: "E14",
+        129: "E12",
+        132: "E19",
+        136: "E13"
+    }
+    errorTranslated['it'] = {
+        0: "None",
+        1: "E8",
+        2: "E4",
+        4: "E9 - Mancanza pellet",
+        8: "E7",
+        16: "E3",
+        32: "E1",
+        48: "E6",
+        64: "E2",
+        72: "E14",
+        129: "E12",
+        132: "E19",
+        136: "E13"
+    }
+    errorTranslated['es'] = {
+        0: "None",
+        1: "E8",
+        2: "E4",
+        4: "E9 - Perdida de pellet",
+        8: "E7",
+        16: "E3",
+        32: "E1",
+        48: "E6",
+        64: "E2",
+        72: "E14",
+        129: "E12",
+        132: "E19",
+        136: "E13"
+    }
+
+    def __init__(self, url, username, password, deviceid, language="en",debug=False):
         """EfestoClient object constructor"""
         if debug is True:
             _LOGGER.setLevel(logging.DEBUG)
@@ -68,6 +203,8 @@ class EfestoClient(object):
 
         self.phpsessid = None
         self.remember = None
+
+        self.language = language
 
         self._login()
 
@@ -195,7 +332,9 @@ class EfestoClient(object):
 
         return Device(self.deviceid,
                       res['message']['deviceStatus'],
-                      self.statusTranslated[res['message']['deviceStatus']],
+                      self.statusTranslated[self.language][res['message']['deviceStatus']],
+                      res['message']['isDeviceInAlarm'],
+                      self.errorTranslated[self.language][res['message']['isDeviceInAlarm']],
                       res['message']['airTemperature'],
                       res['message']['smokeTemperature'],
                       res['message']['realPower'],
@@ -279,11 +418,14 @@ class EfestoClient(object):
 class Device(object):
     """Efesto heating device representation"""
     def __init__(self, device_id, device_status, device_status_human,
+                 device_error, device_error_human,
                  air_temperature, smoke_temperature, real_power,
                  last_set_air_temperature, last_set_power, idle_info=None):
         self.__device_id = device_id
         self.__device_status = device_status
         self.__device_status_human = device_status_human
+        self.__device_error = device_error
+        self.__device_error_human = device_error_human
         self.__air_temperature = air_temperature
         self.__smoke_temperature = smoke_temperature
         self.__real_power = real_power
@@ -302,6 +444,14 @@ class Device(object):
     @property
     def device_status_human(self):
         return self.__device_status_human
+
+    @property
+    def device_error(self):
+        return self.__device_error
+
+    @property
+    def device_error_human(self):
+        return self.__device_error_human
 
     @property
     def air_temperature(self):
